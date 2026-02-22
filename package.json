@@ -1,0 +1,17 @@
+{
+  "name": "universal-chat-service",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Dockerized Hono API with llama.cpp and Redis",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "@ai-sdk/openai-compatible": "^2.0.30",
+    "@hono/node-server": "^1.19.9",
+    "ai": "^6.0.97",
+    "hono": "^4.12.1"
+  }
+}
