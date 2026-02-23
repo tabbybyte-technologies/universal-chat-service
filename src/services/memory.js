@@ -43,10 +43,13 @@ export async function appendMessage(userId, role, content, domain, category) {
   const key = buildKey(userId, domain, category);
   const entry = JSON.stringify({ role, content });
 
-  // Push to the right of the list, then trim to max length
-  await redis.rPush(key, entry);
-  await redis.lTrim(key, -config.memoryMaxMessages, -1);
-  await redis.expire(key, SESSION_TTL_SECONDS);
+  // Pipeline all three commands into a single round-trip
+  await redis
+    .multi()
+    .rPush(key, entry)
+    .lTrim(key, -config.memoryMaxMessages, -1)
+    .expire(key, SESSION_TTL_SECONDS)
+    .exec();
 }
 
 /**

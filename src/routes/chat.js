@@ -47,15 +47,18 @@ chatRouter.post("/chat", async (c) => {
 
     const userMessage = message.trim();
 
-    // Append user turn to history, then build full message list for the model
-    await appendMessage(userId, "user", userMessage, domain, category);
-    const messages = await getHistory(userId, domain, category);
+    // Fetch existing history, then build the message array locally.
+    // Fire the Redis write concurrently with model generation — LLM latency
+    // dominates, so the append is effectively free.
+    const history = await getHistory(userId, domain, category);
+    const messages = [...history, { role: "user", content: userMessage }];
+    const appendUserPromise = appendMessage(userId, "user", userMessage, domain, category);
 
     const shouldStream = c.req.query("nostreaming") === undefined;
 
     if (!shouldStream) {
       const t0 = performance.now();
-      const reply = await generateReply(messages);
+      const [reply] = await Promise.all([generateReply(messages), appendUserPromise]);
       await appendMessage(userId, "assistant", reply, domain, category);
       console.debug(
         `[chat] generation took ${(performance.now() - t0).toFixed(1)}ms`,
@@ -69,11 +72,17 @@ chatRouter.post("/chat", async (c) => {
       const t0 = performance.now();
       const chunks = [];
       try {
-        for await (const chunk of textStream) {
-          chunks.push(chunk);
-          await s.write(chunk);
-        }
-        const fullReply = chunks.join("");
+        // Drain the stream; user-append resolves in the background
+        const [, fullReply] = await Promise.all([
+          appendUserPromise,
+          (async () => {
+            for await (const chunk of textStream) {
+              chunks.push(chunk);
+              await s.write(chunk);
+            }
+            return chunks.join("");
+          })(),
+        ]);
         await appendMessage(userId, "assistant", fullReply, domain, category);
         console.debug(
           `[chat] stream completed in ${(performance.now() - t0).toFixed(1)}ms`,
