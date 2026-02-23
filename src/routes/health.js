@@ -1,9 +1,9 @@
-import { Hono } from 'hono';
+import { Hono } from "hono";
 
 export const healthRouter = new Hono();
 
-healthRouter.all('/health', (c) =>
+healthRouter.all("/health", (c) =>
   c.json({
-    status: 'ok',
+    status: "ok",
   }),
 );

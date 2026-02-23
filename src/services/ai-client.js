@@ -1,23 +1,24 @@
-import { generateText } from 'ai';
-import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
-import { config } from '../config.js';
+import { generateText, streamText } from "ai";
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+import { config } from "../config.js";
 
 const provider = createOpenAICompatible({
-  name: 'docker-model-runner',
+  name: "docker-model-runner",
   baseURL: config.modelBaseUrl,
 });
 
-export async function generateReply(message) {
-  const { text } = await generateText({
-    model: provider.chatModel(config.modelId),
-    system: config.systemInstruction,
-    messages: [
-      {
-        role: 'user',
-        content: message,
-      },
-    ],
-  });
+const modelParams = (message) => ({
+  model: provider.chatModel(config.modelId),
+  system: config.systemInstruction,
+  messages: [{ role: "user", content: message }],
+});
 
+export async function generateReply(message) {
+  const { text } = await generateText(modelParams(message));
   return text;
+}
+
+export function streamReply(message) {
+  const { textStream } = streamText(modelParams(message));
+  return textStream;
 }

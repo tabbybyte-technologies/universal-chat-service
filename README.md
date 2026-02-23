@@ -82,13 +82,25 @@ Send a message to the LLM and receive a reply.
 | `X-API-KEY` | Yes | Must match the `API_KEY` env variable |
 | `Content-Type` | Yes | `application/json` |
 
+**Query parameters**
+
+| Parameter | Required | Description |
+|---|---|---|
+| `nostreaming` | No | When present (any value), disables streaming and returns a buffered JSON response instead |
+
+By default the response is streamed as plain text (`text/plain; charset=utf-8`, chunked transfer encoding). Pass `?nostreaming` to receive a single JSON object once the full reply is ready.
+
 **Request body**
 
 ```json
 { "message": "What is the capital of France?" }
 ```
 
-**Success response `200`**
+**Success response — streaming (default)**
+
+Chunked plain-text stream of the reply as it is generated.
+
+**Success response — non-streaming (`?nostreaming`)**
 
 ```json
 {

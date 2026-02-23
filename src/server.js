@@ -1,13 +1,13 @@
-import { serve } from '@hono/node-server';
-import { Hono } from 'hono';
-import { config } from './config.js';
-import { healthRouter } from './routes/health.js';
-import { chatRouter } from './routes/chat.js';
+import { serve } from "@hono/node-server";
+import { Hono } from "hono";
+import { config } from "./config.js";
+import { healthRouter } from "./routes/health.js";
+import { chatRouter } from "./routes/chat.js";
 
 const app = new Hono();
 
-app.route('/', healthRouter);
-app.route('/', chatRouter);
+app.route("/", healthRouter);
+app.route("/", chatRouter);
 
 serve(
   {
