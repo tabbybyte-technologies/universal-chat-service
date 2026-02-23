@@ -2,7 +2,10 @@ import { Hono } from "hono";
 import { stream } from "hono/streaming";
 import { apiKeyAuth } from "../middleware/auth.js";
 import { streamReply, generateReply } from "../services/ai-client.js";
-import { appendMessage, getHistory } from "../services/memory.js";
+import {
+  appendAssistantMessageInBackground,
+  prepareTurn,
+} from "../services/memory.js";
 
 export const chatRouter = new Hono();
 
@@ -46,19 +49,19 @@ chatRouter.post("/chat", async (c) => {
 
     const userMessage = message.trim();
 
-    // Fetch existing history, then build the message array locally.
-    // Fire the Redis write concurrently with model generation — LLM latency
-    // dominates, so the append is effectively free.
-    const history = await getHistory(userId, domain, category);
-    const messages = [...history, { role: "user", content: userMessage }];
-    const appendUserPromise = appendMessage(userId, "user", userMessage, domain, category);
+    const { messages, appendUserMessagePromise } = await prepareTurn(
+      userId,
+      userMessage,
+      domain,
+      category,
+    );
 
     const shouldStream = c.req.query("nostreaming") === undefined;
 
     if (!shouldStream) {
       const t0 = performance.now();
-      const [reply] = await Promise.all([generateReply(messages), appendUserPromise]);
-      await appendMessage(userId, "assistant", reply, domain, category);
+      const [reply] = await Promise.all([generateReply(messages), appendUserMessagePromise]);
+      void appendAssistantMessageInBackground(userId, reply, domain, category);
       console.debug(
         `[chat] generation took ${(performance.now() - t0).toFixed(1)}ms`,
       );
@@ -69,20 +72,17 @@ chatRouter.post("/chat", async (c) => {
 
     return stream(c, async (s) => {
       const t0 = performance.now();
-      const chunks = [];
+      let fullReply = "";
       try {
-        // Drain the stream; user-append resolves in the background
-        const [, fullReply] = await Promise.all([
-          appendUserPromise,
-          (async () => {
-            for await (const chunk of textStream) {
-              chunks.push(chunk);
-              await s.write(chunk);
-            }
-            return chunks.join("");
-          })(),
-        ]);
-        await appendMessage(userId, "assistant", fullReply, domain, category);
+        // Drain the stream; user-append resolves in the background.
+        await appendUserMessagePromise;
+        for await (const chunk of textStream) {
+          fullReply += chunk;
+          await s.write(chunk);
+        }
+
+        void appendAssistantMessageInBackground(userId, fullReply, domain, category);
+
         console.debug(
           `[chat] stream completed in ${(performance.now() - t0).toFixed(1)}ms`,
         );
