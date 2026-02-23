@@ -49,18 +49,13 @@ chatRouter.post("/chat", async (c) => {
 
     const userMessage = message.trim();
 
-    const { messages, appendUserMessagePromise } = await prepareTurn(
-      userId,
-      userMessage,
-      domain,
-      category,
-    );
+    const messages = await prepareTurn(userId, userMessage, domain, category);
 
     const shouldStream = c.req.query("nostreaming") === undefined;
 
     if (!shouldStream) {
       const t0 = performance.now();
-      const [reply] = await Promise.all([generateReply(messages), appendUserMessagePromise]);
+      const reply = await generateReply(messages);
       void appendAssistantMessageInBackground(userId, reply, domain, category);
       console.debug(
         `[chat] generation took ${(performance.now() - t0).toFixed(1)}ms`,
@@ -74,8 +69,6 @@ chatRouter.post("/chat", async (c) => {
       const t0 = performance.now();
       let fullReply = "";
       try {
-        // Drain the stream; user-append resolves in the background.
-        await appendUserMessagePromise;
         for await (const chunk of textStream) {
           fullReply += chunk;
           await s.write(chunk);

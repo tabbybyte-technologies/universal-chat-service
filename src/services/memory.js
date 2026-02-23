@@ -84,25 +84,27 @@ export async function appendMessage(userId, role, content, domain, category) {
 }
 
 /**
- * Build the model message list for a new user turn and start persisting
+ * Build the model message list for a new user turn and persist
  * the user message in the background.
  * @param {string} userId
  * @param {string} userMessage
  * @param {string} [domain]
  * @param {string} [category]
- * @returns {Promise<{messages: Array<{role: string, content: string}>, appendUserMessagePromise: Promise<void>}>}
+ * @returns {Promise<Array<{role: string, content: string}>>}
  */
 export async function prepareTurn(userId, userMessage, domain, category) {
   const history = await getHistory(userId, domain, category);
   const messages = [...history, { role: "user", content: userMessage }];
-  const appendUserMessagePromise = appendMessage(
+  void appendMessage(
     userId,
     "user",
     userMessage,
     domain,
     category,
-  );
-  return { messages, appendUserMessagePromise };
+  ).catch((err) => {
+    console.error("[memory] failed to append user message:", err.message);
+  });
+  return messages;
 }
 
 /**
