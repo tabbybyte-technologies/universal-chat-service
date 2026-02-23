@@ -66,38 +66,3 @@ export async function getHistory(userId, domain, category) {
   const entries = await redis.lRange(key, 0, -1);
   return entries.map((e) => JSON.parse(e));
 }
-
-/**
- * Delete history for a user, using wildcard matching for any omitted scope component.
- *
- * | domain | category | pattern used                        |
- * |--------|----------|-------------------------------------|
- * | ✔      | ✔        | `chat:<userId>::<domain>:<category>` (exact, no scan) |
- * | ✔      | ✗        | `chat:<userId>::<domain>:*`          |
- * | ✗      | ✔        | `chat:<userId>::*:<category>`        |
- * | ✗      | ✗        | `chat:<userId>::*`                   |
- *
- * @param {string} userId
- * @param {string} [domain]
- * @param {string} [category]
- * @returns {Promise<number>} number of keys deleted
- */
-export async function clearHistory(userId, domain, category) {
-  const redis = await getClient();
-
-  // Exact key — skip the scan entirely
-  if (domain && category) {
-    return redis.del(buildKey(userId, domain, category));
-  }
-
-  const domainGlob = domain || "*";
-  const categoryGlob = category || "*";
-  const pattern = `chat:${userId}::${domainGlob}:${categoryGlob}`;
-
-  const keys = [];
-  for await (const key of redis.scanIterator({ MATCH: pattern, COUNT: 100 })) {
-    keys.push(key);
-  }
-  if (keys.length === 0) return 0;
-  return redis.del(keys);
-}

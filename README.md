@@ -19,7 +19,7 @@ src/
 ├── middleware/
 │   └── auth.js            # X-API-KEY header guard
 ├── routes/
-│   ├── chat.js            # POST /chat  ·  DELETE /chat/history/:userId
+│   ├── chat.js            # POST /chat
 │   └── health.js          # ANY  /health
 └── services/
     ├── ai-client.js       # Vercel AI SDK wrapper
@@ -145,36 +145,6 @@ Chunked plain-text stream of the reply as it is generated.
 | `500` | LLM or unexpected server error |
 
 ---
-
-### `DELETE /chat/history/:userId`
-
-Clears chat history for a given user. Omitted query parameters are treated as wildcards, so only the provided components need to match:
-
-| `domain` | `category` | Keys deleted |
-|---|---|---|
-| ✔ | ✔ | `chat:<userId>::<domain>:<category>` (exact) |
-| ✔ | ✗ | `chat:<userId>::<domain>:*` |
-| ✗ | ✔ | `chat:<userId>::*:<category>` |
-| ✗ | ✗ | `chat:<userId>::*` (all sessions) |
-
-**Headers**
-
-| Header | Required | Description |
-|---|---|---|
-| `X-API-KEY` | Yes | Must match the `API_KEY` env variable |
-
-**Query parameters**
-
-| Parameter | Required | Description |
-|---|---|---|
-| `domain` | No | Match against this domain. Omit to wildcard (`*`). |
-| `category` | No | Match against this category. Omit to wildcard (`*`). |
-
-**Response `200`**
-
-```json
-{ "error": false, "cleared": "user-abc" }
-```
 
 ## Development (without Docker)
 

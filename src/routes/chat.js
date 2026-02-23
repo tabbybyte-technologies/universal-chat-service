@@ -2,12 +2,11 @@ import { Hono } from "hono";
 import { stream } from "hono/streaming";
 import { apiKeyAuth } from "../middleware/auth.js";
 import { streamReply, generateReply } from "../services/ai-client.js";
-import { appendMessage, getHistory, clearHistory } from "../services/memory.js";
+import { appendMessage, getHistory } from "../services/memory.js";
 
 export const chatRouter = new Hono();
 
 chatRouter.use("/chat", apiKeyAuth);
-chatRouter.use("/chat/history/:userId", apiKeyAuth);
 
 chatRouter.post("/chat", async (c) => {
   try {
@@ -103,14 +102,4 @@ chatRouter.post("/chat", async (c) => {
       500,
     );
   }
-});
-
-// DELETE /chat/history/:userId — clear a user's history
-// Optionally scope to a domain/category via query params
-chatRouter.delete("/chat/history/:userId", async (c) => {
-  const { userId } = c.req.param();
-  const domain = c.req.query("domain");
-  const category = c.req.query("category");
-  await clearHistory(userId, domain, category);
-  return c.json({ error: false, cleared: userId });
 });
