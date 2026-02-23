@@ -7,18 +7,28 @@ const provider = createOpenAICompatible({
   baseURL: config.modelBaseUrl,
 });
 
-const modelParams = (message) => ({
+/**
+ * Build model params from a history array (already includes the latest user message).
+ * @param {Array<{role: string, content: string}>} messages
+ */
+const modelParams = (messages) => ({
   model: provider.chatModel(config.modelId),
   system: config.systemInstruction,
-  messages: [{ role: "user", content: message }],
+  messages,
 });
 
-export async function generateReply(message) {
-  const { text } = await generateText(modelParams(message));
+/**
+ * @param {Array<{role: string, content: string}>} messages
+ */
+export async function generateReply(messages) {
+  const { text } = await generateText(modelParams(messages));
   return text;
 }
 
-export function streamReply(message) {
-  const { textStream } = streamText(modelParams(message));
+/**
+ * @param {Array<{role: string, content: string}>} messages
+ */
+export function streamReply(messages) {
+  const { textStream } = streamText(modelParams(messages));
   return textStream;
 }

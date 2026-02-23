@@ -11,6 +11,8 @@ services:
     environment:
       PORT: ${PORT:-3000}
       API_KEY: ${API_KEY:-change-me}
+      REDIS_URL: redis://redis:6379
+      MEMORY_MAX_MESSAGES: ${MEMORY_MAX_MESSAGES:-20}
     ports:
       - "${PORT:-3030}:3000"
     depends_on:

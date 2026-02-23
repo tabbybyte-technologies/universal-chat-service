@@ -12,6 +12,7 @@
     "@ai-sdk/openai-compatible": "^2.0.30",
     "@hono/node-server": "^1.19.9",
     "ai": "^6.0.97",
-    "hono": "^4.12.1"
+    "hono": "^4.12.1",
+    "redis": "^5.11.0"
   }
 }

@@ -15,4 +15,7 @@ export const config = {
   modelId: process.env.MODEL_ID || "ai/qwen3:4B-UD-Q4_K_XL",
   systemInstruction:
     "You are a concise and helpful assistant. Answer directly and keep responses practical.",
+  redisUrl: process.env.REDIS_URL || "redis://redis:6379",
+  // Maximum number of messages (user + assistant turns) retained per session
+  memoryMaxMessages: Number(process.env.MEMORY_MAX_MESSAGES || 20),
 };

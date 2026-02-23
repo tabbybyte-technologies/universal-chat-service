@@ -19,10 +19,11 @@ src/
 ├── middleware/
 │   └── auth.js            # X-API-KEY header guard
 ├── routes/
-│   ├── chat.js            # POST /chat
+│   ├── chat.js            # POST /chat  ·  DELETE /chat/history/:userId
 │   └── health.js          # ANY  /health
 └── services/
-    └── ai-client.js       # Vercel AI SDK wrapper
+    ├── ai-client.js       # Vercel AI SDK wrapper
+    └── memory.js          # Redis-backed chat history
 ```
 
 ## Prerequisites
@@ -55,6 +56,8 @@ src/
 | `MODEL_BASE_URL` | `http://model-runner.docker.internal/engines/v1` | Base URL of the OpenAI-compatible LLM endpoint |
 | `MODEL_ID` | `ai/qwen3:4B-UD-Q4_K_XL` | Model identifier forwarded to the provider |
 | `DMR_MODEL` | `ai/qwen3:4B-UD-Q4_K_XL` | Docker Model Runner model to pull and serve |
+| `REDIS_URL` | `redis://redis:6379` | Redis connection URL used by the memory module |
+| `MEMORY_MAX_MESSAGES` | `20` | Maximum number of messages (user + assistant) retained per history key |
 
 > `MODEL_BASE_URL` and `MODEL_ID` are injected automatically by Docker Compose via the `models:` block, so you only need to set them manually when running outside of Compose.
 
@@ -92,9 +95,25 @@ By default the response is streamed as plain text (`text/plain; charset=utf-8`, 
 
 **Request body**
 
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `message` | string | Yes | The user's message |
+| `userId` | string | Yes | Unique user identifier — combined with `domain` and `category` to form the session scope |
+| `domain` | string | No | Namespace component of the session scope (default: `universal`) |
+| `category` | string | No | Sub-namespace component of the session scope (default: `general`) |
+
+The three fields `userId`, `domain`, and `category` together uniquely identify a conversation session. Requests that share the same combination of all three values share the same history.
+
 ```json
-{ "message": "What is the capital of France?" }
+{
+  "message": "What is the capital of France?",
+  "userId": "user-abc",
+  "domain": "support",
+  "category": "billing"
+}
 ```
+
+Each conversation is stored in Redis under the key `chat:<userId>::<domain>:<category>`, capped at `MEMORY_MAX_MESSAGES` entries and expired after 24 hours of inactivity. The full history is sent to the model on every turn so the LLM has context of the prior conversation.
 
 **Success response — streaming (default)**
 
@@ -105,7 +124,8 @@ Chunked plain-text stream of the reply as it is generated.
 ```json
 {
   "error": false,
-  "reply": "Paris."
+  "reply": "Paris.",
+  "userId": "user-abc"
 }
 ```
 
@@ -120,9 +140,41 @@ Chunked plain-text stream of the reply as it is generated.
 
 | Status | Cause |
 |---|---|
-| `400` | Missing / invalid JSON or empty `message` field |
+| `400` | Missing / invalid JSON, empty `message`, or missing `userId` |
 | `401` | Missing or incorrect `X-API-KEY` |
 | `500` | LLM or unexpected server error |
+
+---
+
+### `DELETE /chat/history/:userId`
+
+Clears chat history for a given user. Omitted query parameters are treated as wildcards, so only the provided components need to match:
+
+| `domain` | `category` | Keys deleted |
+|---|---|---|
+| ✔ | ✔ | `chat:<userId>::<domain>:<category>` (exact) |
+| ✔ | ✗ | `chat:<userId>::<domain>:*` |
+| ✗ | ✔ | `chat:<userId>::*:<category>` |
+| ✗ | ✗ | `chat:<userId>::*` (all sessions) |
+
+**Headers**
+
+| Header | Required | Description |
+|---|---|---|
+| `X-API-KEY` | Yes | Must match the `API_KEY` env variable |
+
+**Query parameters**
+
+| Parameter | Required | Description |
+|---|---|---|
+| `domain` | No | Match against this domain. Omit to wildcard (`*`). |
+| `category` | No | Match against this category. Omit to wildcard (`*`). |
+
+**Response `200`**
+
+```json
+{ "error": false, "cleared": "user-abc" }
+```
 
 ## Development (without Docker)
 
