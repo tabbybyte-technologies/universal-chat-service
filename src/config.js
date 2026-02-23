@@ -9,9 +9,10 @@ for (const key of required) {
 export const config = {
   port: Number(process.env.PORT || 3000),
   apiKey: process.env.API_KEY,
-  llamaBaseUrl: process.env.LLAMA_BASE_URL || 'http://llama-cpp:8080/v1',
-  llamaModel: process.env.LLAMA_MODEL || 'local-model',
-  llamaApiKey: process.env.LLAMA_API_KEY || 'dummy',
+  modelBaseUrl:
+    process.env.MODEL_BASE_URL ||
+    'http://model-runner.docker.internal/engines/v1',
+  modelId: process.env.MODEL_ID || 'ai/qwen3:4B-UD-Q4_K_XL',
   systemInstruction:
     'You are a concise and helpful assistant. Answer directly and keep responses practical.',
 };
