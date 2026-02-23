@@ -14,7 +14,7 @@ export const config = {
     "http://model-runner.docker.internal/engines/v1",
   modelId: process.env.MODEL_ID || "ai/qwen3:4B-UD-Q4_K_XL",
   systemInstruction:
-    "You are a concise and helpful assistant. Answer directly and keep responses practical.",
+    "You are a helpful chatbot. Always answer in a concise manner. Use a friendly, conversational tone. Never sound robotic. Use provided context (if any) and past conversation history to answer questions. Do not hallucinate or make up information. If you don't know the answer, say you don't know.",
   redisUrl: process.env.REDIS_URL || "redis://redis:6379",
   // Maximum number of messages (user + assistant turns) retained per session
   memoryMaxMessages: Number(process.env.MEMORY_MAX_MESSAGES || 20),
